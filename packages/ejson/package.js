@@ -1,6 +1,10 @@
 Package.describe({
   summary: "Extended and Extensible JSON library",
+<<<<<<< HEAD
   version: '1.1.0'
+=======
+  version: '1.0.13'
+>>>>>>> meteor/devel
 });
 
 Package.onUse(function (api) {

@@ -21,7 +21,6 @@ var sourceMapRetrieverStack = require('../tool-env/source-map-retriever-stack.js
 var utils = require('../utils/utils.js');
 var cleanup = require('../tool-env/cleanup.js');
 var buildmessage = require('../utils/buildmessage.js');
-var watch = require('./watch.js');
 var fiberHelpers = require('../utils/fiber-helpers.js');
 var colonConverter = require('../utils/colon-converter.js');
 
@@ -215,7 +214,7 @@ files.getCurrentToolsDir = function () {
 files.getSettings = function (filename, watchSet) {
   buildmessage.assertInCapture();
   var absPath = files.pathResolve(filename);
-  var buffer = watch.readAndWatchFile(watchSet, absPath);
+  var buffer = require("./watch.js").readAndWatchFile(watchSet, absPath);
   if (buffer === null) {
     buildmessage.error("file not found (settings file)",
                        { file: filename });
@@ -279,14 +278,22 @@ function statOrNull(path, preserveSymlinks) {
 
 // Like rm -r.
 files.rm_recursive = Profile("files.rm_recursive", function (p) {
-  if (Fiber.current && Fiber.yield && ! Fiber.yield.disallowed) {
-    new Promise((resolve, reject) => {
-      rimraf(files.convertToOSPath(p), err => {
-        err ? reject(err) : resolve();
-      });
-    }).await();
-  } else {
-    rimraf.sync(files.convertToOSPath(p));
+  const path = files.convertToOSPath(p);
+  try {
+    rimraf.sync(path);
+  } catch (e) {
+    if (e.code === "ENOTEMPTY" &&
+        Fiber.current &&
+        Fiber.yield &&
+        ! Fiber.yield.disallowed) {
+      new Promise((resolve, reject) => {
+        rimraf(path, err => {
+          err ? reject(err) : resolve();
+        });
+      }).await();
+      return;
+    }
+    throw e;
   }
 });
 
@@ -472,12 +479,14 @@ files.cp_r = function(from, to, options = {}) {
         return;
       }
 
+      const fullFrom = files.pathJoin(from, f);
+
       if (options.transformFilename) {
         f = options.transformFilename(f);
       }
 
       files.cp_r(
-        files.pathJoin(from, f),
+        fullFrom,
         files.pathJoin(to, f),
         options
       );
@@ -717,13 +726,10 @@ files.extractTarGz = function (buffer, destPath, options) {
   }
 
   const startTime = +new Date;
-  let promise = tryExtractWithNativeTar(buffer, tempDir, options);
 
-  if (process.platform === "win32") {
-    promise = promise.catch(
-      error => tryExtractWithNative7z(buffer, tempDir, options)
-    );
-  }
+  let promise = process.platform === "win32"
+    ? tryExtractWithNative7z(buffer, tempDir, options)
+    : tryExtractWithNativeTar(buffer, tempDir, options)
 
   promise = promise.catch(
     error => tryExtractWithNpmTar(buffer, tempDir, options)
@@ -1447,6 +1453,11 @@ files.readLinkToMeteorScript = function (linkLocation, platform) {
 //   A helpful file to import for this purpose is colon-converter.js, which also
 //   knows how to convert various configuration file formats.
 
+// Fibers are disabled by default for files.* operations unless
+// process.env.METEOR_DISABLE_FS_FIBERS parses to a falsy value.
+const YIELD_ALLOWED = !! (
+  _.has(process.env, "METEOR_DISABLE_FS_FIBERS") &&
+  ! JSON.parse(process.env.METEOR_DISABLE_FS_FIBERS));
 
 files.fsFixPath = {};
 /**
@@ -1481,7 +1492,11 @@ function wrapFsFunc(fsFuncName, pathArgIndices, options) {
         args[i] = files.convertToOSPath(args[i]);
       }
 
-      const canYield = Fiber.current && Fiber.yield && ! Fiber.yield.disallowed;
+      const canYield = YIELD_ALLOWED &&
+        Fiber.current &&
+        Fiber.yield &&
+        ! Fiber.yield.disallowed;
+
       const shouldBeSync = alwaysSync || sync;
       // There's some overhead in awaiting a Promise of an async call,
       // vs just doing the sync call, which for a call like "stat"
@@ -1490,7 +1505,8 @@ function wrapFsFunc(fsFuncName, pathArgIndices, options) {
       // conditions, so we get a nice performance boost from making
       // these calls sync.
       const isQuickie = (fsFuncName === 'stat' ||
-                         fsFuncName === 'rename');
+                         fsFuncName === 'rename' ||
+                         fsFuncName === 'symlink');
 
       if (canYield && shouldBeSync && !isQuickie) {
         const promise = new Promise((resolve, reject) => {
@@ -1713,17 +1729,6 @@ files.watchFile = function (...args) {
 files.unwatchFile = function (...args) {
   args[0] = files.convertToOSPath(args[0]);
   return fs.unwatchFile(...args);
-};
-
-// wrap pathwatcher because it works with file system paths
-// XXX we don't currently convert the path argument passed to the watch
-//     callback, but we currently don't use the argument either
-files.pathwatcherWatch = function (...args) {
-  args[0] = files.convertToOSPath(args[0]);
-  // don't import pathwatcher until the moment we actually need it
-  // pathwatcher has a record of keeping some global state
-  var pathwatcher = require('pathwatcher');
-  return require("pathwatcher").watch(...args);
 };
 
 files.readBufferWithLengthAndOffset = function (filename, length, offset) {

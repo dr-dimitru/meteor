@@ -144,9 +144,11 @@ main.registerCommand({
     projectDir: options.appDir,
     allowIncompatibleUpdate: options['allow-incompatible-update']
   });
+
   main.captureAndExit("=> Errors while initializing project:", function () {
     projectContext.prepareProjectForBuild();
   });
+
   projectContext.packageMapDelta.displayOnConsole();
 });
 
@@ -863,7 +865,9 @@ main.registerCommand({
     // Ensure that all packages and their tests are built. (We need to build
     // tests so that we can include their sources in source tarballs.)
     var allPackagesWithTests = projectContext.localCatalog.getAllPackageNames();
-    var allPackages = projectContext.localCatalog.getAllNonTestPackageNames();
+    var allPackages = projectContext.localCatalog.getAllNonTestPackageNames({
+      includeNonCore: false,
+    });
     projectContext.projectConstraintsFile.addConstraints(
       _.map(allPackagesWithTests, function (p) {
         return utils.parsePackageConstraint(p);
@@ -2613,7 +2617,7 @@ main.registerCommand({
   try {
     Console.rawInfo(
         "Changing homepage on "
-          + name + " to " + url + "...");
+          + name + " to " + url + "...\n");
       packageClient.callPackageServer(conn,
           '_changePackageHomepage', name, url);
       Console.info(" done");
@@ -2666,7 +2670,7 @@ main.registerCommand({
     _.each(versions, function (version) {
       Console.rawInfo(
         "Setting " + name + "@" + version + " as " +
-         status + " migrated ... ");
+         status + " migrated ...\n");
       packageClient.callPackageServer(
         conn,
         '_changeVersionMigrationStatus',

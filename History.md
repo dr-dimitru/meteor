@@ -1,10 +1,228 @@
 ## v.NEXT
 
+* The `npm` npm package has been upgraded to version 4.0.2.
+
+* The `facebook` package has been split into:
+  - `facebook-oauth` (the part that allows oauth w/ FB directly) and
+  - `facebook-config-ui` (the Blaze configuration templates for accounts-ui)
+
+  This means you can now use `[accounts-]facebook` without needing Blaze.
+
+  If you are using `accounts-ui` and `accounts-facebook`, you will probably
+  need to install the `facebook-config-ui` package if you want to configure it
+  using the Accounts UI.
+
+  [Issue #7715](https://github.com/meteor/meteor/issues/7715)
+  [PR #7728](https://github.com/meteor/meteor/pull/7728)
+
+* The `meteor-babel` npm package has been upgraded to version 0.14.3,
+  fixing [#8021](https://github.com/meteor/meteor/issues/8021) and
+  [#7662](https://github.com/meteor/meteor/issues/7662).
+
+* Added support for frame-ancestors CSP option in browser-policy.
+  [#7970](https://github.com/meteor/meteor/pull/7970)
+  
+* You can now use autoprefixer with stylus files added via packages [#7727](https://github.com/meteor/meteor/pull/7727)
+
+## v1.4.2.3
+
+* Style improvements for `meteor create --full`.
+  [#8045](https://github.com/meteor/meteor/pull/8045)
+
+> Note: Meteor 1.4.2.2 was finalized before
+  [#8045](https://github.com/meteor/meteor/pull/8045) was merged, but
+  those changes were [deemed important
+  enough](https://github.com/meteor/meteor/pull/8044#issuecomment-260913739)
+  to skip recommending 1.4.2.2 and instead immediately release 1.4.2.3.
+
+## v1.4.2.2
+
+* Node has been upgraded to version 4.6.2.
+
+* `meteor create` now has a new `--full` option, which generates an larger app,
+  demonstrating development techniques highlighted in the
+  [Meteor Guide](http://guide.meteor.com)
+
+  [Issue #6974](https://github.com/meteor/meteor/issues/6974)
+  [PR #7807](https://github.com/meteor/meteor/pull/7807)
+
+* Minimongo now supports `$min`, `$max` and partially supports `$currentDate`.
+
+  [Issue #7857](https://github.com/meteor/meteor/issues/7857)
+  [PR #7858](https://github.com/meteor/meteor/pull/7858)
+
+* Fix for [Issue #5676](https://github.com/meteor/meteor/issues/5676)
+  [PR #7968](https://github.com/meteor/meteor/pull/7968)
+
+* It is now possible for packages to specify a *lazy* main module:
+  ```js
+  Package.onUse(function (api) {
+    api.mainModule("client.js", "client", { lazy: true });
+  });
+  ```
+  This means the `client.js` module will not be evaluated during app
+  startup unless/until another module imports it, and will not even be
+  included in the client bundle if no importing code is found. **Note 1:**
+  packages with lazy main modules cannot use `api.export` to export global
+  symbols to other packages/apps. **Note 2:** packages with lazy main
+  modules should be restricted to Meteor 1.4.2.2 or later via
+  `api.versionsFrom("1.4.2.2")`, since older versions of Meteor cannot
+  import lazy main modules using `import "meteor/<package name>"` but must
+  explicitly name the module: `import "meteor/<package name>/client.js"`.
+
+## v1.4.2.1
+
+* Installing the `babel-runtime` npm package in your application
+  `node_modules` directory is now required for most Babel-transformed code
+  to work, as the Meteor `babel-runtime` package no longer attempts to
+  provide custom implementations of Babel helper functions. To install
+  the `babel-runtime` package, simply run the command
+  ```sh
+  meteor npm install --save babel-runtime
+  ```
+  in any Meteor application directory. The Meteor `babel-runtime` package
+  version has been bumped to 1.0.0 to reflect this major change.
+  [#7995](https://github.com/meteor/meteor/pull/7995)
+
+* File system operations performed by the command-line tool no longer use
+  fibers unless the `METEOR_DISABLE_FS_FIBERS` environment variable is
+  explicitly set to a falsy value. For larger apps, this change results in
+  significant build performance improvements due to the creation of fewer
+  fibers and the avoidance of unnecessary asyncronous delays.
+  https://github.com/meteor/meteor/pull/7975/commits/ca4baed90ae0675e55c93976411d4ed91f12dd63
+
+* Running Meteor as `root` is still discouraged, and results in a fatal
+  error by default, but the `--allow-superuser` flag now works as claimed.
+  [#7959](https://github.com/meteor/meteor/issues/7959)
+
+* The `dev_bundle\python\python.exe` executable has been restored to the
+  Windows dev bundle, which may help with `meteor npm rebuild` commands.
+  [#7960](https://github.com/meteor/meteor/issues/7960)
+
+* Changes within linked npm packages now trigger a partial rebuild,
+  whereas previously (in 1.4.2) they were ignored.
+  [#7978](https://github.com/meteor/meteor/issues/7978)
+
+* Miscellaneous fixed bugs:
+  [#2876](https://github.com/meteor/meteor/issues/2876)
+  [#7154](https://github.com/meteor/meteor/issues/7154)
+  [#7956](https://github.com/meteor/meteor/issues/7956)
+  [#7974](https://github.com/meteor/meteor/issues/7974)
+  [#7999](https://github.com/meteor/meteor/issues/7999)
+  [#8005](https://github.com/meteor/meteor/issues/8005)
+  [#8007](https://github.com/meteor/meteor/issues/8007)
+
+## v1.4.2
+
+* This release implements a number of rebuild performance optimizations.
+  As you edit files in development, the server should restart and rebuild
+  much more quickly, especially if you have many `node_modules` files.
+  See https://github.com/meteor/meteor/pull/7668 for more details.
+
+> Note: the `METEOR_PROFILE` environment variable now provides data for
+  server startup time as well as build time, which should make it easier
+  to tell which of your packages are responsible for slow startup times.
+  Please include the output of `METEOR_PROFILE=10 meteor run` with any
+  GitHub issue about rebuild performance.
+
+* `npm` has been upgraded to version 3.10.9.
+
+* The `cordova-lib` npm package has been updated to 6.3.1, along with
+  cordova-android (5.2.2) and cordova-ios (4.2.1), and various plugins.
+
+* The `node-pre-gyp` npm package has been updated to 0.6.30.
+
+* The `lru-cache` npm package has been updated to 4.0.1.
+
+* The `meteor-promise` npm package has been updated to 0.8.0 for better
+  asynchronous stack traces.
+
+* The `meteor` tool is now prevented from running as `root` as this is
+  not recommended and can cause issues with permissions.  In some environments,
+  (e.g. Docker), it may still be desired to run as `root` and this can be
+  permitted by passing `--unsafe-perm` to the `meteor` command.
+  [#7821](https://github.com/meteor/meteor/pull/7821)
+
+* Blaze-related packages have been extracted to
+  [`meteor/blaze`](https://github.com/meteor/blaze), and the main
+  [`meteor/meteor`](https://github.com/meteor/meteor) repository now
+  refers to them via git submodules (see
+  [#7633](https://github.com/meteor/meteor/pull/7633)).
+  When running `meteor` from a checkout, you must now update these
+  submodules by running
+  ```sh
+  git submodule update --init --recursive
+  ```
+  in the root directory of your `meteor` checkout.
+
+* Accounts.forgotPassword and .verifyEmail no longer throw errors if callback is provided. [Issue #5664](https://github.com/meteor/meteor/issues/5664) [Origin PR #5681](https://github.com/meteor/meteor/pull/5681) [Merged PR](https://github.com/meteor/meteor/pull/7117)
+
+* The default content security policy (CSP) for Cordova now includes `ws:`
+  and `wss:` WebSocket protocols.
+  [#7774](https://github.com/meteor/meteor/pull/7774)
+
+* `meteor npm` commands are now configured to use `dev_bundle/.npm` as the
+  npm cache directory by default, which should make npm commands less
+  sensitive to non-reproducible factors in the external environment.
+  https://github.com/meteor/meteor/pull/7668/commits/3313180a6ff33ee63602f7592a9506012029e919
+
+* The `meteor test` command now supports the `--no-release-check` flag.
+  https://github.com/meteor/meteor/pull/7668/commits/7097f78926f331fb9e70a06300ce1711adae2850
+
+* JavaScript module bundles on the server no longer include transitive
+  `node_modules` dependencies, since those dependencies can be evaluated
+  directly by Node. This optimization should improve server rebuild times
+  for apps and packages with large `node_modules` directories.
+  https://github.com/meteor/meteor/pull/7668/commits/03c5346873849151cecc3e00606c6e5aa13b3bbc
+
+* The `standard-minifier-css` package now does basic caching for the
+  expensive `mergeCss` function.
+  https://github.com/meteor/meteor/pull/7668/commits/bfa67337dda1e90610830611fd99dcb1bd44846a
+
+* The `coffeescript` package now natively supports `import` and `export`
+  declarations. [#7818](https://github.com/meteor/meteor/pull/7818)
+
+## v1.4.1.3
+
+* Node has been updated to version 4.6.1:
+  https://nodejs.org/en/blog/release/v4.6.1/
+
+* The `mongodb` npm package used by the `npm-mongo` Meteor package has
+  been updated to version 2.2.11.
+  [#7780](https://github.com/meteor/meteor/pull/7780)
+
+* The `fibers` npm package has been upgraded to version 1.0.15.
+
+* Running Meteor with a different `--port` will now automatically
+  reconfigure the Mongo replica set when using the WiredTiger storage
+  engine, instead of failing to start Mongo.
+  [#7840](https://github.com/meteor/meteor/pull/7840).
+
+* When the Meteor development server shuts down, it now attempts to kill
+  the `mongod` process it spawned, in addition to killing any running
+  `mongod` processes when the server first starts up.
+  https://github.com/meteor/meteor/pull/7668/commits/295d3d5678228f06ee0ab6c0d60139849a0ea192
+
+* The `meteor <command> ...` syntax will now work for any command
+  installed in `dev_bundle/bin`, except for Meteor's own commands.
+
+* Incomplete package downloads will now fail (and be retried several
+  times) instead of silently succeeding, which was the cause of the
+  dreaded `Error: ENOENT: no such file or directory, open... os.json`
+  error. [#7806](https://github.com/meteor/meteor/issues/7806)
+
+## v1.4.1.2
+
+* Node has been upgraded to version 4.6.0, a recommended security release:
+  https://nodejs.org/en/blog/release/v4.6.0/
+
+* `npm` has been upgraded to version 3.10.8.
+
 ## v1.4.1.1
 
-* Update the version of our Node MongoDB driver to 2.2.7 to fix a bug in
+* Update the version of our Node MongoDB driver to 2.2.8 to fix a bug in
   reconnection logic, leading to some `update` and `remove` commands being
-  treated as `insert`s. [#7594](https://github.com/meteor/meteor/issue/7594)
+  treated as `insert`s. [#7594](https://github.com/meteor/meteor/issues/7594)
 
 ## v1.4.1
 
@@ -396,7 +614,6 @@
 * Insert a `Date` header into emails by default: https://github.com/meteor/meteor/pull/6916/files
 
 * `meteor test` now supports setting the bind address using `--port IP:PORT` the same as `meteor run` [PR #6964](https://github.com/meteor/meteor/pull/6964) [Issue #6961](https://github.com/meteor/meteor/issues/6961)
-* Accounts.forgotPassword and .verifyEmail no longer throw errors if callback is provided. [Issue #5664](https://github.com/meteor/meteor/issues/5664) [Origin PR #5681](https://github.com/meteor/meteor/pull/5681) [Merged PR](https://github.com/meteor/meteor/pull/7117)
 
 * `Meteor.apply` now takes a `noRetry` option to opt-out of automatically retrying non-idempotent methods on connection blips: [PR #6180](https://github.com/meteor/meteor/pull/6180)
 
